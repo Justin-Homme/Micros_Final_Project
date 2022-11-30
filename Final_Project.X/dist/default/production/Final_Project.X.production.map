@@ -6,7 +6,7 @@ Linker command line:
   --edf=C:\Program Files\Microchip\xc8\v2.40\pic\dat\20220703182018_en.msgs \
   -cs -h+dist/default/production\Final_Project.X.production.sym \
   --cmf=dist/default/production\Final_Project.X.production.cmf -z \
-  -Q18F57Q43 -oC:\Users\justi\AppData\Local\Temp\xcAs18a4.4 \
+  -Q18F57Q43 -oC:\Users\justi\AppData\Local\Temp\xcAsgak.4 \
   --fixupoverflow=error -ver=XC8 PIC(R) Assembler --fixupoverflow=lstwarn \
   -Mdist/default/production/Final_Project.X.production.map -E1 --acfsm=1493 \
   -ACODE=00h-01FFFFh -ACONST=00h-01FFFFh -ASMALLCONST=02600h-026FFhx474 \
@@ -37,14 +37,14 @@ Machine type is 18F57Q43
                 Name                               Link     Load   Length Selector   Space Scale
 build/default/production/main.o
                 config                           300000   300000        A        0       4
-                resetVec                          1FEC4    1FEC4        4     FF62       0
-                code                              1FEC8    1FEC8      138     FF64       0
+                resetVec                          1FF0A    1FF0A        4     FF85       0
+                code                              1FF0E    1FF0E       F2     FF87       0
                 udata_acs                           500      500        4      500       1
 
 TOTAL           Name                               Link     Load   Length     Space
         CLASS   CODE           
-                resetVec                          1FEC4    1FEC4        4         0
-                code                              1FEC8    1FEC8      138         0
+                resetVec                          1FF0A    1FF0A        4         0
+                code                              1FF0E    1FF0E       F2         0
 
         CLASS   CONST          
 
@@ -141,8 +141,8 @@ TOTAL           Name                               Link     Load   Length     Sp
 SEGMENTS        Name                           Load    Length   Top    Selector   Space  Class
 
                 udata_acs                      000500  000004  000504       500       1  COMRAM  
-                resetVec                       01FEC4  000004  01FEC8      FF62       0  CODE    
-                code                           01FEC8  000138  020000      FF64       0  CODE    
+                resetVec                       01FF0A  000004  01FF0E      FF85       0  CODE    
+                code                           01FF0E  0000F2  020000      FF87       0  CODE    
 
 
 UNUSED ADDRESS RANGES
@@ -183,18 +183,18 @@ UNUSED ADDRESS RANGES
         BIGRAM           000500-0024FF             2000
         BIGSFR           000000-0004FF              500
                          002500-0025FF              100
-        CODE             000000-01FEC3            1FEC4
+        CODE             000000-01FF09            1FF0A
         COMRAM           000504-00055F               5C
         CONFIG           30000A-300011                8
-        CONST            000000-01FEC3            1FEC4
+        CONST            000000-01FF09            1FF0A
         EEDATA           380000-3803FF              400
         IDLOC            200000-20003F               40
         MEDIUMCONST      002600-00FFFF             DA00
-                         012600-01FEC3             D8C4
+                         012600-01FF09             D90A
         RAM              000560-0024FF              100
         SFR              000000-0004FF              100
                          002500-0025FF              100
-        SMALLCONST       002600-01FEC3              100
+        SMALLCONST       002600-01FF09              100
 
                                   Symbol Table
 
