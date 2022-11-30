@@ -135,7 +135,7 @@ LOW_Z	EQU 0x7A    ; z
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CLR_DSP	EQU 0x01    
 R_HOME	EQU 0x02
-DISP_ON	EQU 0x0E    ; Display on, cursor, no blink
+DISP_ON	EQU 0x0C    ; Display on, no cursor, no blink
 FUN_SET	EQU 0x3C    ; 8 bit, 2 lines, 5x11
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -204,24 +204,16 @@ HERE1:
     CALL    DELAY_MSEC
     CALL    DELAY_MSEC
     CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
+
+; Setup commands
+    
     BANKSEL PORTD
     CLRF    PORTD, 1
     ; Function Set cmd
     MOVLW   FUN_SET
     MOVWF   PORTD, 1
     ; Pulse E
-    BANKSEL PORTB
-    CLRF    PORTB, 1
-    BSF	    PORTB, LCD_EN,  1	; Set E hi
-    NOP
-    NOP
-    NOP
-    BCF	    PORTD, LCD_EN,  1	; Set E lo
-    
-    CALL    DELAY_MSEC		; TODO - change to lower delay
+    CALL    PULSE_E		
     
     BANKSEL PORTD
 
@@ -230,16 +222,7 @@ HERE1:
     MOVLW   CLR_DSP
     MOVWF   PORTD, 1
     ; Pulse E
-    BANKSEL PORTB
-    CLRF    PORTB, 1
-    BSF	    PORTB, LCD_EN, 1	; Set E hi
-    NOP
-    NOP
-    NOP
-    BCF	    PORTB, LCD_EN, 1	; Set E lo
-    
-    ; Longer Delay for this command
-    CALL    DELAY_MSEC		; TODO - change to lower delay
+    CALL    PULSE_E
     CALL    DELAY_MSEC
     CALL    DELAY_MSEC
     
@@ -249,59 +232,55 @@ HERE1:
     MOVLW   R_HOME
     MOVWF   PORTD, 1
     ; Pulse E
-    BANKSEL PORTB
-    CLRF    PORTB, 1
-    BSF	    PORTB, LCD_EN,  1	; Set E hi
-    NOP
-    NOP
-    NOP
-    BCF	    PORTD, LCD_EN,  1	; Set E lo
-    
-    CALL    DELAY_MSEC		; TODO - change to lower delay
+    CALL    PULSE_E
     CALL    DELAY_MSEC
     CALL    DELAY_MSEC
     
     BANKSEL PORTD
     
-    // Display on; cursor; no blink
+    // Display on; no cursor; no blink
     MOVLW   DISP_ON
     MOVWF   PORTD, 1
     ; Pulse E
-    BANKSEL PORTB
-    BSF	    PORTB, LCD_RS   ; Data entry mode
-    BSF	    PORTB, LCD_EN   ; Set E hi
-    NOP
-    NOP
-    NOP
-    BCF	    PORTB, LCD_EN   ; Set E lo
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
-
-    ; Send Data Chararcter "H"
-    MOVLB   0x09
-    NOP
-    MOVLW   CAP_H
-    BANKSEL PORTD
-    MOVWF   PORTD, 1
-    BANKSEL PORTB
-    BSF	    PORTB, LCD_RS   ; Data entry mode
-    BSF	    PORTB, LCD_EN   ; Set E hi
-    NOP
-    NOP
-    NOP
-    BCF	    PORTB, LCD_EN   ; Set E lo
-    CALL    DELAY_MSEC
+    CALL    PULSE_E
     CALL    DELAY_MSEC
     CALL    DELAY_MSEC
     
+; End of setup commands
+    
+; Data Entry
+
+    ; Send Data Chararcter "H"
     MOVLB   0x09
-;    MOVWF   CHAR_REG, 1
-;    CALL    WRITE_CHAR
-    ; Send Data Character "i"
-    MOVLW   LOW_I
+    MOVLW   CAP_H
     MOVWF   CHAR_REG, 1
     CALL    WRITE_CHAR
+    
+    ; Send Data Chararcter "e"
+    MOVLB   0x09
+    MOVLW   LOW_E
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Chararcter "l"
+    MOVLB   0x09
+    MOVLW   LOW_L
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+   
+    ; Send Data Chararcter "l"
+    MOVLB   0x09
+    MOVLW   LOW_L
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Chararcter "o"
+    MOVLB   0x09
+    MOVLW   LOW_O
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+; End of data entry
 
 HERE2:    NOP
     
@@ -309,7 +288,7 @@ HERE2:    NOP
 
 DELAY_MSEC:
     MOVLB   0x09
-    MOVLW   0xFF
+    MOVLW   0x01
     MOVWF   R2,	1
 L_1:	; MAIN loop in the subroutine to generate a delay of R2 msecs
     MOVLW   0xC7
@@ -335,6 +314,9 @@ WRITE_CHAR:
     
     MOVWF   PORTD, 1
     
+    BANKSEL PORTB
+    BSF	    PORTB, LCD_RS, 1	; Data entry mode
+    
     ; Toggle Enable Pin
     CALL    PULSE_E
     
@@ -352,14 +334,11 @@ PULSE_E:
     
     ; Toggle Enable Pin
     BANKSEL PORTB
-    BSF	    PORTB, LCD_RS   ; Data entry mode
     BSF	    PORTB, LCD_EN   ; Set E hi
     NOP
     NOP
     NOP
     BCF	    PORTB, LCD_EN   ; Set E lo
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
     CALL    DELAY_MSEC
     
     RETURN  ; End PULSE_E
