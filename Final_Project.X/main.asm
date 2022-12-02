@@ -143,6 +143,47 @@ FUN_SET	EQU 0x3C    ; 8 bit, 2 lines, 5x11
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 CHAR_REG EQU 0x01	
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Keypad Interface
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+COL_0	EQU 0x0E    ; Selects column 0
+COL_1	EQU 0x0D    ; Selects column 1
+COL_2	EQU 0x0B    ; Selects column 2
+COL_3	EQU 0x07    ; Selects column 3
+ 
+B_K0	EQU 0xEE    ; Button for character: '1'
+B_K1	EQU 0xED    ; Button for character: '2'
+B_K2	EQU 0xEB    ; Button for character: '3'
+B_K3	EQU 0xE7    ; Button for character: 'A'
+	
+B_K4	EQU 0xDE    ; Button for character: '4'
+B_K5	EQU 0xDD    ; Button for character: '5'
+B_K6	EQU 0xDB    ; Button for character: '6'
+B_K7	EQU 0xD7    ; Button for character: 'B'
+	
+B_K8	EQU 0xEE    ; Button for character: '7'
+B_K9	EQU 0xED    ; Button for character: '8'
+B_K10	EQU 0xEB    ; Button for character: '3'
+B_K11	EQU 0xE7    ; Button for character: 'A'
+	
+B_K4	EQU 0xDE    ; Button for character: '4'
+B_K5	EQU 0xDD    ; Button for character: '5'
+B_K6	EQU 0xDB    ; Button for character: '6'
+B_K7	EQU 0xD7    ; Button for character: 'B'
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; User Entered Values
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+UEV_0	EQU 0x0990
+UEV_1	EQU 0x0991
+UEV_2	EQU 0x0992
+UEV_3	EQU 0x0993
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Temporary Storage
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+TEMP	EQU 0x30
+	
  // configuration word 5
 CONFIG CP=OFF // PFM and Data EEPROM code protection disabled
 ;objects in common (Access bank) memory
@@ -177,6 +218,16 @@ PSECT code
 
 main:
     
+    BANKSEL PORTC ;
+    CLRF PORTC,	1 ;Clear PORTC
+    BANKSEL LATC ;
+    CLRF LATC,	1 ;Clear Data Latch
+    BANKSEL ANSELC ;
+    CLRF ANSELC, 1 ;Enable digital drivers
+    BANKSEL TRISC ;
+    MOVLW 0xF0 ;Set RC[7:4] as inputs and RA[3:0] as outputs
+    MOVWF TRISC, 1
+    
     BANKSEL PORTD ;
     CLRF PORTD,	1 ;Clear PORTD
     BANKSEL LATD ;
@@ -184,17 +235,17 @@ main:
     BANKSEL ANSELD ;
     CLRF ANSELD, 1 ;Enable digital drivers
     BANKSEL TRISD ;
-    MOVLW 0x00 ;Set RA[5:3] as inputs
+    MOVLW 0x00 ;Set RD[7:0] as outputs
     MOVWF TRISD, 1
     
     BANKSEL PORTB ;
-    CLRF PORTB,	1 ;Clear PORTD
+    CLRF PORTB,	1 ;Clear PORTB
     BANKSEL LATB ;
     CLRF LATB,	1 ;Clear Data Latch
     BANKSEL ANSELB ;
     CLRF ANSELB, 1 ;Enable digital drivers
     BANKSEL TRISB ;
-    MOVLW 0x00 ;Set RA[5:3] as inputs
+    MOVLW 0x00 ;Set RB[7:0] as outputs
     MOVWF TRISB, 1
     
 HERE1:    
@@ -281,10 +332,17 @@ HERE1:
     CALL    WRITE_CHAR
     
 ; End of data entry
-
-HERE2:    NOP
     
-    BRA    HERE2
+    ; Set up LFSR0
+    LFSR    0, UEV_0	; Point LFSR0 to first User Entered Value Position
+    BANKSEL PORTC
+    MOVLW   0xFF
+    MOVWF   PORTC, 1
+    
+HERE2:    NOP
+    CALL    DELAY_MSEC
+    CALL    CHECK_B_PRESS
+    BRA	    HERE2
 
 DELAY_MSEC:
     MOVLB   0x09
@@ -342,6 +400,80 @@ PULSE_E:
     CALL    DELAY_MSEC
     
     RETURN  ; End PULSE_E
+
+CHECK_B_PRESS:
+    
+    BANKSEL PORTC
+    MOVLW   COL_0   ; Select Column 0
+    MOVWF   PORTC  
+    CALL    ROW_CHECK
+
+    BANKSEL PORTC
+    MOVLW   COL_1   ; Select Column 1
+    MOVWF   PORTC   
+    CALL    ROW_CHECK
+    
+    BANKSEL PORTC
+    MOVLW   COL_2   ; Select Column 2
+    MOVWF   PORTC   
+    CALL    ROW_CHECK
+    
+    BANKSEL PORTC
+    MOVLW   COL_3   ; Select Column 0
+    MOVWF   PORTC   
+    CALL    ROW_CHECK
+    
+SKIP_CBP:
+    BANKSEL PORTC
+    MOVLW   0xFF
+    MOVWF   PORTC, 1
+    GOTO    HERE2  ; End CHECK_B_PRESS
+    
+ROW_CHECK:
+    ; Check each row position
+    BANKSEL PORTC
+    MOVF    PORTC, 0, 1
+    MOVWF   INDF0, 0
+    ANDLW   0xF0    ; ignore bits 7:4
+    XORLW   0xF0    ; invert bits 3:0
+    BNZ	    INTERP_B
+    RETURN  ; End ROW_CHECK
+    
+INTERP_B:   ; Interpret button presses
+    MOVLB   0x09
+    MOVF    INDF0, 0, 1
+    MOVWF   POSTINC0
+    ;	Check which column
+;    ANDLW   0xF0    ; Ignore bits 3:0
+;    XORLW   0xF0    ; Invert bits 7:4
+;    MOVWF   TEMP, 1 ; Move to temporary location
+;    
+;    ANDWF   0xE0    ; Check if Column 0
+;    BZ	    IN_COL_0
+;    
+;    MOVF    TEMP, 0, 1
+;    ANDWF   0xD0
+;    BZ	    IN_COL_1
+;    
+;    MOVF    TEMP, 0, 1
+;    ANDWF   0xB0
+;    BZ	    IN_COL_2
+;    
+;    BRA	    IN_COL3 ; Only option left
+;;    MOVF    TEMP, 0, 1
+;;    ANDWF   0x70
+;;    BZ	    IN_COL_3
+;    
+;IN_COL_0:
+;    MOVF    INTCON0, 0, 1
+;    
+;IN_COL_1:
+;    
+;IN_COL_2:
+;    
+;IN_COL_3:
+    
+    GOTO    SKIP_CBP	; Skip the rest of the columns
     
  END resetVec
     
