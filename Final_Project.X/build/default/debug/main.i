@@ -32698,10 +32698,9 @@ ANS_3 EQU B_K4 ; 4
 TEMP EQU 0x30
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Counters
+; Counter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-COUNTR EQU 0x20 ; Counts how many digits have been entered
-DELAY_COUNT EQU 0x21 ; Counter for 1 second delay
+COUNTR EQU 0x20
 
 
 CONFIG CP=OFF
@@ -32735,50 +32734,47 @@ PSECT code
 
 main:
 
-    BANKSEL PORTC
-    CLRF PORTC, 1 ; Clear PORTC
-    BANKSEL LATC
-    CLRF LATC, 1 ; Clear Data Latch
-    BANKSEL ANSELC
-    CLRF ANSELC, 1 ; Enable digital drivers
+    BANKSEL PORTC ;
+    CLRF PORTC, 1 ;Clear PORTC
+    BANKSEL LATC ;
+    CLRF LATC, 1 ;Clear Data Latch
+    BANKSEL ANSELC ;
+    CLRF ANSELC, 1 ;Enable digital drivers
     BANKSEL INLVLC
     SETF INLVLC, 1 ; Use TTL for port reads
     BANKSEL WPUC
     SETF WPUC, 1 ; Enable Weak Pull Up
     BANKSEL ODCONC
     CLRF ODCONC, 1
-    BANKSEL TRISC
-    MOVLW 0xF0 ; Set RC[7:4] as inputs and RA[3:0] as outputs
+    BANKSEL TRISC ;
+    MOVLW 0xF0 ;Set RC[7:4] as inputs and RA[3:0] as outputs
     MOVWF TRISC, 1
 
-    BANKSEL PORTD
-    CLRF PORTD, 1 ; Clear PORTD
-    BANKSEL LATD
-    CLRF LATD, 1 ; Clear Data Latch
-    BANKSEL ANSELD
-    CLRF ANSELD, 1 ; Enable digital drivers
-    BANKSEL TRISD
-    MOVLW 0x00 ; Set RD[7:0] as outputs
+    BANKSEL PORTD ;
+    CLRF PORTD, 1 ;Clear PORTD
+    BANKSEL LATD ;
+    CLRF LATD, 1 ;Clear Data Latch
+    BANKSEL ANSELD ;
+    CLRF ANSELD, 1 ;Enable digital drivers
+    BANKSEL TRISD ;
+    MOVLW 0x00 ;Set RD[7:0] as outputs
     MOVWF TRISD, 1
 
-    BANKSEL PORTB
-    CLRF PORTB, 1 ; Clear PORTB
-    BANKSEL LATB
-    CLRF LATB, 1 ; Clear Data Latch
-    BANKSEL ANSELB
-    CLRF ANSELB, 1 ; Enable digital drivers
-    BANKSEL TRISB
-    MOVLW 0x00 ; Set RB[7:0] as outputs
+    BANKSEL PORTB ;
+    CLRF PORTB, 1 ;Clear PORTB
+    BANKSEL LATB ;
+    CLRF LATB, 1 ;Clear Data Latch
+    BANKSEL ANSELB ;
+    CLRF ANSELB, 1 ;Enable digital drivers
+    BANKSEL TRISB ;
+    MOVLW 0x00 ;Set RB[7:0] as outputs
     MOVWF TRISB, 1
 
 HERE1:
 
+    ; Tell Controller: 4-bit data, 2-line display, 5x7 font
 
     CALL DELAY_20_MSEC
-
-    ; Useful for "GOTO HERE1" ; Puts us in command mode
-    BANKSEL PORTB
-    CLRF PORTB, 1
 
 ; Setup commands
 
@@ -32825,31 +32821,31 @@ HERE1:
 
 ; Data Entry
 
-    ; Send Data Character "E"
+    ; Send Data Chararcter "E"
     MOVLB 0x09
     MOVLW CAP_E
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "n"
+    ; Send Data Chararcter "n"
     MOVLB 0x09
     MOVLW LOW_N
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "t"
+    ; Send Data Chararcter "t"
     MOVLB 0x09
     MOVLW LOW_T
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "e"
+    ; Send Data Chararcter "e"
     MOVLB 0x09
     MOVLW LOW_E
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "r"
+    ; Send Data Chararcter "r"
     MOVLB 0x09
     MOVLW LOW_R
     MOVWF CHAR_REG, 1
@@ -32861,55 +32857,55 @@ HERE1:
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-     ; Send Data Character "p"
+     ; Send Data Chararcter "p"
     MOVLB 0x09
     MOVLW LOW_P
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "a"
+    ; Send Data Chararcter "a"
     MOVLB 0x09
     MOVLW LOW_A
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "s"
+    ; Send Data Chararcter "s"
     MOVLB 0x09
     MOVLW LOW_S
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "s"
+    ; Send Data Chararcter "s"
     MOVLB 0x09
     MOVLW LOW_S
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "c"
+    ; Send Data Chararcter "c"
     MOVLB 0x09
     MOVLW LOW_C
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "o"
+    ; Send Data Chararcter "o"
     MOVLB 0x09
     MOVLW LOW_O
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "d"
+    ; Send Data Chararcter "d"
     MOVLB 0x09
     MOVLW LOW_D
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "e"
+    ; Send Data Chararcter "e"
     MOVLB 0x09
     MOVLW LOW_E
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character ":"
+    ; Send Data Chararcter ":"
     MOVLB 0x09
     MOVLW COLON
     MOVWF CHAR_REG, 1
@@ -32930,8 +32926,8 @@ HERE1:
 ; End of data entry
 
     ; Set up LFSR0
-    LFSR 0, UEV_0 ; Point LFSR0 to first User
-    BANKSEL PORTC ; Entered Value Position
+    LFSR 0, UEV_0 ; Point LFSR0 to first User Entered Value Position
+    BANKSEL PORTC
     MOVLW 0xFF
     MOVWF PORTC, 1
 
@@ -32952,8 +32948,8 @@ DELAY_MSEC:
     MOVLB 0x09
     MOVLW 0x01
     MOVWF R2, 1
-L_1: ; MAIN loop in the subroutine
-    MOVLW 0xC7 ; to generate a delay of R2 msecs
+L_1: ; MAIN loop in the subroutine to generate a delay of R2 msecs
+    MOVLW 0xC7
     MOVWF R1
 L_2: ; inner loop generates a delay of 1 msecs
     NOP
@@ -32969,8 +32965,8 @@ DELAY_20_MSEC:
     MOVLB 0x09
     MOVLW 0x14 ; 20 Msec
     MOVWF R2, 1
-LOOP_1: ; MAIN loop in the subroutine
-    MOVLW 0xC7 ; to generate a delay of R2 msecs
+LOOP_1: ; MAIN loop in the subroutine to generate a delay of R2 msecs
+    MOVLW 0xC7
     MOVWF R1
 LOOP_2: ; inner loop generates a delay of 1 msecs
     NOP
@@ -32981,17 +32977,6 @@ LOOP_2: ; inner loop generates a delay of 1 msecs
     BNZ LOOP_1
 
     RETURN ; End DELAY_20_MSEC
-
-DELAY_1_SEC:
-    MOVLB 0x09
-    MOVLW 0x32
-    MOVWF DELAY_COUNT, 1
-IN_LOOP:
-    CALL DELAY_20_MSEC
-    DECF DELAY_COUNT, 1 ; Loop 50 times
-    BNZ IN_LOOP
-
-    RETURN
 
 WRITE_CHAR:
 
@@ -33110,41 +33095,19 @@ CHECK_CODE:
     GOTO SUCCESS_MSG ; All the same - SUCCESS!
 
 FAIL_MSG:
-    ; Command mode
-    BANKSEL PORTB
-    CLRF PORTB, 1
-
-    BANKSEL PORTD
-
-    ; Clear display
-    CLRF PORTD, 1
-    MOVLW CLR_DSP
-    MOVWF PORTD, 1
-    ; Pulse E
-    CALL PULSE_E
-    CALL DELAY_MSEC
-    CALL DELAY_MSEC
-
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-
-    ; Send Data Character "T"
+    ; Send Data Chararcter "T"
     MOVLB 0x09
     MOVLW CAP_T
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "r"
+    ; Send Data Chararcter "r"
     MOVLB 0x09
     MOVLW LOW_R
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "y"
+    ; Send Data Chararcter "y"
     MOVLB 0x09
     MOVLW LOW_Y
     MOVWF CHAR_REG, 1
@@ -33156,7 +33119,7 @@ FAIL_MSG:
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "a"
+    ; Send Data Chararcter "a"
     MOVLB 0x09
     MOVLW LOW_A
     MOVWF CHAR_REG, 1
@@ -33168,53 +33131,45 @@ FAIL_MSG:
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-     ; Send Data Character "a"
+     ; Send Data Chararcter "a"
     MOVLB 0x09
     MOVLW LOW_A
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "i"
+    ; Send Data Chararcter "i"
     MOVLB 0x09
     MOVLW LOW_I
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
-    ; Send Data Character "n"
+    ; Send Data Chararcter "n"
     MOVLB 0x09
     MOVLW LOW_N
     MOVWF CHAR_REG, 1
     CALL WRITE_CHAR
 
     ; TODO - fix this
-    CALL DELAY_1_SEC
-    CALL DELAY_1_SEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
+    CALL DELAY_20_MSEC
 
-    GOTO HERE1
+    GOTO main
 
 SUCCESS_MSG:
-    ; Command mode
-    BANKSEL PORTB
-    CLRF PORTB, 1
-
-    BANKSEL PORTD
-
-    ; Clear display
-    CLRF PORTD, 1
-    MOVLW CLR_DSP
-    MOVWF PORTD, 1
-    ; Pulse E
-    CALL PULSE_E
-    CALL DELAY_MSEC
-    CALL DELAY_MSEC
-
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-    CALL DELAY_20_MSEC
-
     ; Send Data Character "C"
     MOVLB 0x09
     MOVLW CAP_C

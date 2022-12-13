@@ -10,7 +10,7 @@ PROCESSOR 18F57Q43
 
 
  // configuration word 1
-CONFIG FEXTOSC=XT // crystal oscillator
+CONFIG FEXTOSC=LP // crystal oscillator
 CONFIG RSTOSC=EXTOSC // EXTOSC operating per FEXTOSC bits
 CONFIG CLKOUTEN=OFF // CLKOUT function is disabled
 CONFIG PR1WAY=ON // PRLOCK bit can be cleared and set only once
@@ -74,8 +74,11 @@ R2  EQU	    0x02
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; ASCII Characters
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+CR	EQU 0x0D    ; Carriage Return
+C_SPACE	EQU 0x20    ; " "
 ASTRX	EQU 0x2A    ; *
-
+COLON	EQU 0x3A    ; :
+	
 CAP_A	EQU 0x41    ; A
 CAP_B	EQU 0x42    ; B
 CAP_C	EQU 0x43    ; C
@@ -137,6 +140,7 @@ CLR_DSP	EQU 0x01
 R_HOME	EQU 0x02
 DISP_ON	EQU 0x0C    ; Display on, no cursor, no blink
 FUN_SET	EQU 0x3C    ; 8 bit, 2 lines, 5x11
+LINE_2	EQU 0xC0    ; Go to Line 2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Parameter for WRITE_CHAR
@@ -180,9 +184,23 @@ UEV_2	EQU 0x0992
 UEV_3	EQU 0x0993
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Answer Key
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ANS_0	EQU B_K0    ; 1
+ANS_1	EQU B_K1    ; 2
+ANS_2	EQU B_K2    ; 3
+ANS_3	EQU B_K4    ; 4
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary Storage
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 TEMP	EQU 0x30
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Counters
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+COUNTR		EQU 0x20    ; Counts how many digits have been entered
+DELAY_COUNT	EQU 0x21    ; Counter for 1 second delay
 	
  // configuration word 5
 CONFIG CP=OFF // PFM and Data EEPROM code protection disabled
@@ -200,62 +218,67 @@ intsave_regs:
 ORG 0x00
 GOTO	main
 
-;ORG 0x0008
-;GOTO intVecHi
- 
-COUNTR	EQU 0x60;
+ORG 0x0008
+GOTO intVecHi
 	
 PSECT resetVec,class=CODE,reloc=2
 resetVec:
  goto main
  
-;PSECT hi_int_vec, reloc=2, class=CODE, delta=1
-;intVecHi:
-;    NOP
-;    retfie
+PSECT hi_int_vec, reloc=2, class=CODE, delta=1
+intVecHi:
+    NOP
+    retfie
     
 PSECT code
 
 main:
     
-    BANKSEL PORTC ;
-    CLRF PORTC,	1 ;Clear PORTC
-    BANKSEL LATC ;
-    CLRF LATC,	1 ;Clear Data Latch
-    BANKSEL ANSELC ;
-    CLRF ANSELC, 1 ;Enable digital drivers
-    BANKSEL TRISC ;
-    MOVLW 0xF0 ;Set RC[7:4] as inputs and RA[3:0] as outputs
+    BANKSEL PORTC 
+    CLRF PORTC,	1		; Clear PORTC
+    BANKSEL LATC 
+    CLRF LATC,	1		; Clear Data Latch
+    BANKSEL ANSELC 
+    CLRF ANSELC, 1		; Enable digital drivers
+    BANKSEL INLVLC
+    SETF INLVLC, 1		; Use TTL for port reads
+    BANKSEL WPUC
+    SETF WPUC, 1		; Enable Weak Pull Up
+    BANKSEL ODCONC
+    CLRF ODCONC, 1
+    BANKSEL TRISC 
+    MOVLW 0xF0			; Set RC[7:4] as inputs and RA[3:0] as outputs
     MOVWF TRISC, 1
     
-    BANKSEL PORTD ;
-    CLRF PORTD,	1 ;Clear PORTD
-    BANKSEL LATD ;
-    CLRF LATD,	1 ;Clear Data Latch
-    BANKSEL ANSELD ;
-    CLRF ANSELD, 1 ;Enable digital drivers
-    BANKSEL TRISD ;
-    MOVLW 0x00 ;Set RD[7:0] as outputs
+    BANKSEL PORTD 
+    CLRF PORTD,	1		; Clear PORTD
+    BANKSEL LATD 
+    CLRF LATD,	1		; Clear Data Latch
+    BANKSEL ANSELD 
+    CLRF ANSELD, 1		; Enable digital drivers
+    BANKSEL TRISD 
+    MOVLW 0x00			; Set RD[7:0] as outputs
     MOVWF TRISD, 1
     
-    BANKSEL PORTB ;
-    CLRF PORTB,	1 ;Clear PORTB
-    BANKSEL LATB ;
-    CLRF LATB,	1 ;Clear Data Latch
-    BANKSEL ANSELB ;
-    CLRF ANSELB, 1 ;Enable digital drivers
-    BANKSEL TRISB ;
-    MOVLW 0x00 ;Set RB[7:0] as outputs
+    BANKSEL PORTB 
+    CLRF PORTB,	1		; Clear PORTB
+    BANKSEL LATB 
+    CLRF LATB,	1		; Clear Data Latch
+    BANKSEL ANSELB 
+    CLRF ANSELB, 1		; Enable digital drivers
+    BANKSEL TRISB 
+    MOVLW 0x00			; Set RB[7:0] as outputs
     MOVWF TRISB, 1
     
 HERE1:    
-    // Setup
-    ; Tell Controller: 4-bit data, 2-line display, 5x7 font
-    // Wait some time for start-up
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
-    CALL    DELAY_MSEC
 
+    // Wait some time for start-up
+    CALL DELAY_20_MSEC
+    
+    ; Useful for "GOTO HERE1" ; Puts us in command mode
+    BANKSEL PORTB
+    CLRF    PORTB, 1
+    
 ; Setup commands
     
     BANKSEL PORTD
@@ -301,57 +324,137 @@ HERE1:
     
 ; Data Entry
 
-    ; Send Data Chararcter "H"
+    ; Send Data Character "E"
     MOVLB   0x09
-    MOVLW   CAP_H
+    MOVLW   CAP_E
     MOVWF   CHAR_REG, 1
     CALL    WRITE_CHAR
     
-    ; Send Data Chararcter "e"
+    ; Send Data Character "n"
+    MOVLB   0x09
+    MOVLW   LOW_N
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "t"
+    MOVLB   0x09
+    MOVLW   LOW_T
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+   
+    ; Send Data Character "e"
     MOVLB   0x09
     MOVLW   LOW_E
     MOVWF   CHAR_REG, 1
     CALL    WRITE_CHAR
     
-    ; Send Data Chararcter "l"
+    ; Send Data Character "r"
     MOVLB   0x09
-    MOVLW   LOW_L
-    MOVWF   CHAR_REG, 1
-    CALL    WRITE_CHAR
-   
-    ; Send Data Chararcter "l"
-    MOVLB   0x09
-    MOVLW   LOW_L
+    MOVLW   LOW_R
     MOVWF   CHAR_REG, 1
     CALL    WRITE_CHAR
     
-    ; Send Data Chararcter "o"
+    ; Send a space
+    MOVLB   0x09
+    MOVLW   C_SPACE
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+     ; Send Data Character "p"
+    MOVLB   0x09
+    MOVLW   LOW_P
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "a"
+    MOVLB   0x09
+    MOVLW   LOW_A
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "s"
+    MOVLB   0x09
+    MOVLW   LOW_S
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+   
+    ; Send Data Character "s"
+    MOVLB   0x09
+    MOVLW   LOW_S
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "c"
+    MOVLB   0x09
+    MOVLW   LOW_C
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "o"
     MOVLB   0x09
     MOVLW   LOW_O
     MOVWF   CHAR_REG, 1
     CALL    WRITE_CHAR
     
+    ; Send Data Character "d"
+    MOVLB   0x09
+    MOVLW   LOW_D
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+   
+    ; Send Data Character "e"
+    MOVLB   0x09
+    MOVLW   LOW_E
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character ":"
+    MOVLB   0x09
+    MOVLW   COLON
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Go to Line 2
+    BANKSEL PORTB
+    CLRF    PORTB, 1
+    
+    BANKSEL PORTD
+    CLRF    PORTD, 1
+    ; Line 2 cmd
+    MOVLW   LINE_2
+    MOVWF   PORTD, 1
+    ; Pulse E
+    CALL    PULSE_E
+    
 ; End of data entry
     
     ; Set up LFSR0
-    LFSR    0, UEV_0	; Point LFSR0 to first User Entered Value Position
-    BANKSEL PORTC
+    LFSR    0, UEV_0			; Point LFSR0 to first User
+    BANKSEL PORTC			; Entered Value Position
     MOVLW   0xFF
     MOVWF   PORTC, 1
     
+    MOVLB   0x09
+    MOVLW   0x04
+    MOVWF   COUNTR, 1
+    
 HERE2:    NOP
-    CALL    DELAY_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
     CALL    CHECK_B_PRESS
-    BRA	    HERE2
+    GOTO    HERE2
 
 DELAY_MSEC:
     MOVLB   0x09
     MOVLW   0x01
     MOVWF   R2,	1
-L_1:	; MAIN loop in the subroutine to generate a delay of R2 msecs
-    MOVLW   0xC7
+L_1:				    ; MAIN loop in the subroutine 
+    MOVLW   0xC7		    ; to generate a delay of R2 msecs
     MOVWF   R1
-L_2:	; inner loop generates a delay of 1 msecs
+L_2:				    ; inner loop generates a delay of 1 msecs
     NOP
     NOP
     DECF R1, F
@@ -359,7 +462,35 @@ L_2:	; inner loop generates a delay of 1 msecs
     DECF R2, F
     BNZ L_1
     
-    RETURN  ; End DELAY_MSEC
+    RETURN			    ; End DELAY_MSEC
+    
+DELAY_20_MSEC:
+    MOVLB   0x09
+    MOVLW   0x14		    ; 20 Msec
+    MOVWF   R2,	1
+LOOP_1:				    ; MAIN loop in the subroutine
+    MOVLW   0xC7		    ; to generate a delay of R2 msecs
+    MOVWF   R1
+LOOP_2:				    ; inner loop generates a delay of 1 msecs
+    NOP
+    NOP
+    DECF R1, F
+    BNZ LOOP_2	
+    DECF R2, F
+    BNZ LOOP_1
+    
+    RETURN			    ; End DELAY_20_MSEC
+
+DELAY_1_SEC:
+    MOVLB   0x09
+    MOVLW   0x32
+    MOVWF   DELAY_COUNT, 1
+IN_LOOP:
+    CALL    DELAY_20_MSEC
+    DECF    DELAY_COUNT, 1	    ; Loop 50 times
+    BNZ	    IN_LOOP
+    
+    RETURN
     
 WRITE_CHAR:
 
@@ -373,7 +504,7 @@ WRITE_CHAR:
     MOVWF   PORTD, 1
     
     BANKSEL PORTB
-    BSF	    PORTB, LCD_RS, 1	; Data entry mode
+    BSF	    PORTB, LCD_RS, 1	    ; Data entry mode
     
     ; Toggle Enable Pin
     CALL    PULSE_E
@@ -386,94 +517,249 @@ WRITE_CHAR:
     ; Re-init the BSR
     MOVLB   0x09
     
-    RETURN  ; End WRITE_CHAR
+    RETURN			    ; End WRITE_CHAR
     
 PULSE_E:
     
     ; Toggle Enable Pin
     BANKSEL PORTB
-    BSF	    PORTB, LCD_EN   ; Set E hi
+    BSF	    PORTB, LCD_EN	    ; Set E hi
     NOP
     NOP
     NOP
-    BCF	    PORTB, LCD_EN   ; Set E lo
+    BCF	    PORTB, LCD_EN	    ; Set E lo
     CALL    DELAY_MSEC
     
-    RETURN  ; End PULSE_E
+    RETURN			    ; End PULSE_E
 
 CHECK_B_PRESS:
     
     BANKSEL PORTC
-    MOVLW   COL_0   ; Select Column 0
-    MOVWF   PORTC  
+    MOVLW   COL_0		    ; Select Column 0
+    MOVWF   PORTC, 1  
     CALL    ROW_CHECK
 
-    BANKSEL PORTC
-    MOVLW   COL_1   ; Select Column 1
-    MOVWF   PORTC   
+    BANKSEL PORTC 
+    MOVLW   COL_1		    ; Select Column 1
+    MOVWF   PORTC, 1  
     CALL    ROW_CHECK
     
     BANKSEL PORTC
-    MOVLW   COL_2   ; Select Column 2
-    MOVWF   PORTC   
+    MOVLW   COL_2		    ; Select Column 2
+    MOVWF   PORTC, 1   
     CALL    ROW_CHECK
     
     BANKSEL PORTC
-    MOVLW   COL_3   ; Select Column 0
-    MOVWF   PORTC   
+    MOVLW   COL_3		    ; Select Column 0
+    MOVWF   PORTC, 1 
     CALL    ROW_CHECK
     
 SKIP_CBP:
     BANKSEL PORTC
     MOVLW   0xFF
-    MOVWF   PORTC, 1
-    GOTO    HERE2  ; End CHECK_B_PRESS
+    MOVWF   PORTC, 1 
+    RETURN			    ; End CHECK_B_PRESS
     
 ROW_CHECK:
     ; Check each row position
     BANKSEL PORTC
     MOVF    PORTC, 0, 1
     MOVWF   INDF0, 0
-    ANDLW   0xF0    ; ignore bits 7:4
-    XORLW   0xF0    ; invert bits 3:0
+    ANDLW   0xF0		    ; ignore bits 3:0
+    XORLW   0xF0		    ; invert bits 7:4
     BNZ	    INTERP_B
-    RETURN  ; End ROW_CHECK
+    RETURN			    ; End ROW_CHECK
     
-INTERP_B:   ; Interpret button presses
-    MOVLB   0x09
-    MOVF    INDF0, 0, 1
+INTERP_B:			    ; Interpret button presses
+    MOVF    INDF0, 0, 0
     MOVWF   POSTINC0
-    ;	Check which column
-;    ANDLW   0xF0    ; Ignore bits 3:0
-;    XORLW   0xF0    ; Invert bits 7:4
-;    MOVWF   TEMP, 1 ; Move to temporary location
-;    
-;    ANDWF   0xE0    ; Check if Column 0
-;    BZ	    IN_COL_0
-;    
-;    MOVF    TEMP, 0, 1
-;    ANDWF   0xD0
-;    BZ	    IN_COL_1
-;    
-;    MOVF    TEMP, 0, 1
-;    ANDWF   0xB0
-;    BZ	    IN_COL_2
-;    
-;    BRA	    IN_COL3 ; Only option left
-;;    MOVF    TEMP, 0, 1
-;;    ANDWF   0x70
-;;    BZ	    IN_COL_3
-;    
-;IN_COL_0:
-;    MOVF    INTCON0, 0, 1
-;    
-;IN_COL_1:
-;    
-;IN_COL_2:
-;    
-;IN_COL_3:
     
-    GOTO    SKIP_CBP	; Skip the rest of the columns
+    MOVLB   0x09
     
- END resetVec
+    ; Write a '*' to the LCD
+    MOVLW   ASTRX
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    CALL    DELAY_MSEC
+    
+    MOVLB   0x09
+    DECF    COUNTR, 1, 1
+    BZ	    CHECK_CODE
+    
+    GOTO    SKIP_CBP		    ; Skip the rest of the columns
+    
+CHECK_CODE:
+    MOVLB   0x09
+    MOVLW   ANS_0
+    CPFSEQ  0x90, 1
+    GOTO    FAIL_MSG
+    
+    MOVLW   ANS_1
+    CPFSEQ  0x91, 1
+    GOTO    FAIL_MSG
+    
+    MOVLW   ANS_2
+    CPFSEQ  0x92, 1
+    GOTO    FAIL_MSG
+    
+    MOVLW   ANS_3
+    CPFSEQ  0x93, 1
+    GOTO    FAIL_MSG
+    
+    GOTO SUCCESS_MSG		    ; All the same - SUCCESS!
+    
+FAIL_MSG:
+    ; Command mode
+    BANKSEL PORTB
+    CLRF    PORTB, 1
+    
+    BANKSEL PORTD
+
+    ; Clear display
+    CLRF    PORTD, 1		
+    MOVLW   CLR_DSP
+    MOVWF   PORTD, 1
+    ; Pulse E
+    CALL    PULSE_E
+    CALL    DELAY_MSEC
+    CALL    DELAY_MSEC
+    
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    
+    ; Send Data Character "T"
+    MOVLB   0x09
+    MOVLW   CAP_T
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "r"
+    MOVLB   0x09
+    MOVLW   LOW_R
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "y"
+    MOVLB   0x09
+    MOVLW   LOW_Y
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+   
+    ; Space
+    MOVLB   0x09
+    MOVLW   C_SPACE
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "a"
+    MOVLB   0x09
+    MOVLW   LOW_A
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "g"
+    MOVLB   0x09
+    MOVLW   LOW_G
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+     ; Send Data Character "a"
+    MOVLB   0x09
+    MOVLW   LOW_A
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "i"
+    MOVLB   0x09
+    MOVLW   LOW_I
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "n"
+    MOVLB   0x09
+    MOVLW   LOW_N
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; TODO - fix this
+    CALL    DELAY_1_SEC
+    CALL    DELAY_1_SEC
+    
+    GOTO    HERE1
+    
+SUCCESS_MSG:
+    ; Command mode
+    BANKSEL PORTB
+    CLRF    PORTB, 1
+    
+    BANKSEL PORTD
+
+    ; Clear display
+    CLRF    PORTD, 1		
+    MOVLW   CLR_DSP
+    MOVWF   PORTD, 1
+    ; Pulse E
+    CALL    PULSE_E
+    CALL    DELAY_MSEC
+    CALL    DELAY_MSEC
+    
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    CALL    DELAY_20_MSEC
+    
+    ; Send Data Character "C"
+    MOVLB   0x09
+    MOVLW   CAP_C
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "o"
+    MOVLB   0x09
+    MOVLW   LOW_O
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "r"
+    MOVLB   0x09
+    MOVLW   LOW_R
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+   
+    ; Send Data Character "r"
+    MOVLB   0x09
+    MOVLW   LOW_R
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "e"
+    MOVLB   0x09
+    MOVLW   LOW_E
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    ; Send Data Character "c"
+    MOVLB   0x09
+    MOVLW   LOW_C
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+     ; Send Data Character "t"
+    MOVLB   0x09
+    MOVLW   LOW_T
+    MOVWF   CHAR_REG, 1
+    CALL    WRITE_CHAR
+    
+    GOTO    INF_LOOP
+    
+INF_LOOP:
+    GOTO    INF_LOOP
+    
+END resetVec
     
